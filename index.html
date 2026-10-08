@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>My Framer Site</title>
+  <meta name="description" content="Made with Framer — static recreation of aware-biscuits-630514.framer.app" />
+  <link rel="icon" href="https://framerusercontent.com/sites/icons/default-favicon-light.v1.png" />
+  <style>
+    html, body { margin: 0; height: 100%; background: #fff; overflow: hidden; font-family: Inter, system-ui, sans-serif; }
+    canvas { display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+    canvas:active { cursor: grabbing; }
+    .badge {
+      position: fixed; left: 16px; bottom: 16px; z-index: 2;
+      display: flex; align-items: center; gap: 8px;
+      background: #fff; color: #111; text-decoration: none;
+      border-radius: 10px; padding: 8px 12px; font-size: 13px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.12);
+    }
+    .badge span { max-width: 220px; line-height: 1.3; }
+    .note {
+      position: fixed; right: 16px; top: 16px; z-index: 2;
+      color: #888; font-size: 12px; letter-spacing: .04em;
+    }
+  </style>
+</head>
+<body>
+  <div class="note">aware biscuits</div>
+  <a class="badge" href="https://www.framer.com" target="_blank" rel="noopener">
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path fill="#000" d="M3 2h12v4.2H9.2L15 12.2V16H3v-4.1h5.7L3 6.1V2z"/></svg>
+    <span>Create a free website with Framer, the website builder loved by startups, designers and agencies.</span>
+  </a>
+  <script type="module">
+    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js';
+
+    const IMAGES = [
+      'https://framerusercontent.com/images/Jod7SbnRBog9AgNjV8WNN2GdtiM.jpg?width=736',
+      'https://framerusercontent.com/images/2VWXLw3u1wifDCSNwmRnFnE1GLE.jpg?width=736',
+      'https://framerusercontent.com/images/g9d0FETWVzoAJSCL3fcMCrQrI.jpg?width=735',
+      'https://framerusercontent.com/images/1GYyt97mhnJa5QhwCXZ8jP27xa8.jpg?width=736',
+      'https://framerusercontent.com/images/BbVZHIZMhkkimnACIFG0WuUkhY.jpg?width=736',
+      'https://framerusercontent.com/images/yyvjQrERGRUOsrQJenSMmq5Ao.jpg?width=736',
+      'https://framerusercontent.com/images/prOg4r7Se5j8E6Fy3skP2cBBGDM.jpg?width=385',
+      'https://framerusercontent.com/images/MfltrVsoc8auCNdX8mLSHpxQ2A.jpg?width=736',
+      'https://framerusercontent.com/images/Q2U5TWtMqpllADuPBAVBBbHhPk.jpg?width=736'
+    ];
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.setClearColor(0xffffff, 1);
+    document.body.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 100);
+    camera.position.set(0, 1.2, 14);
+
+    scene.add(new THREE.AmbientLight(0xffffff, 1.15));
+    const key = new THREE.DirectionalLight(0xffffff, 0.85);
+    key.position.set(4, 8, 6);
+    scene.add(key);
+
+    const loader = new THREE.TextureLoader();
+    loader.setCrossOrigin('anonymous');
+    const biscuits = [];
+
+    function spawn(tex, i) {
+      const aspect = (tex.image?.width || 3) / (tex.image?.height || 4);
+      const h = 1.7 + Math.random() * 0.7;
+      const geo = new THREE.PlaneGeometry(h * aspect, h);
+      const mat = new THREE.MeshStandardMaterial({
+        map: tex, roughness: 0.72, metalness: 0.02, side: THREE.DoubleSide
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+      reset(mesh, true);
+      mesh.userData.spin = new THREE.Vector3(
+        (Math.random() - 0.5) * 0.8,
+        (Math.random() - 0.5) * 1.2,
+        (Math.random() - 0.5) * 0.6
+      );
+      mesh.userData.fall = 0.8 + Math.random() * 1.1;
+      scene.add(mesh);
+      biscuits.push(mesh);
+    }
+
+    function reset(mesh, first) {
+      mesh.position.set((Math.random() - 0.5) * 12, first ? 6 + Math.random() * 10 : 9 + Math.random() * 3, (Math.random() - 0.5) * 6);
+      mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+    }
+
+    IMAGES.forEach((url, i) => {
+      loader.load(url, (tex) => {
+        tex.colorSpace = THREE.SRGBColorSpace;
+        spawn(tex, i);
+        if (i % 2 === 0) spawn(tex, i + 20);
+      });
+    });
+
+    let yaw = 0, pitch = 0.08, dragging = false, lx = 0, ly = 0;
+    const el = renderer.domElement;
+    el.addEventListener('pointerdown', (e) => { dragging = true; lx = e.clientX; ly = e.clientY; el.setPointerCapture(e.pointerId); });
+    el.addEventListener('pointerup', () => { dragging = false; });
+    el.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      yaw += (e.clientX - lx) * 0.005;
+      pitch += (e.clientY - ly) * 0.003;
+      pitch = Math.max(-0.4, Math.min(0.5, pitch));
+      lx = e.clientX; ly = e.clientY;
+    });
+
+    addEventListener('resize', () => {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+    });
+
+    const clock = new THREE.Clock();
+    function frame() {
+      const dt = Math.min(clock.getDelta(), 0.05);
+      const target = new THREE.Vector3(Math.sin(yaw) * 14, 1.2 + pitch * 6, Math.cos(yaw) * 14);
+      camera.position.lerp(target, 0.08);
+      camera.lookAt(0, 0.4, 0);
+      for (const b of biscuits) {
+        b.position.y -= b.userData.fall * dt;
+        b.rotation.x += b.userData.spin.x * dt;
+        b.rotation.y += b.userData.spin.y * dt;
+        b.rotation.z += b.userData.spin.z * dt;
+        if (b.position.y < -8) reset(b, false);
+      }
+      renderer.render(scene, camera);
+      requestAnimationFrame(frame);
+    }
+    frame();
+  </script>
+</body>
+</html>
